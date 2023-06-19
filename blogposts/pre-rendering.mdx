@@ -1,48 +1,214 @@
 ---
-title: "Two Forms of Pre-rendering"
-date: "2023-03-14"
-tags: ["next.js", "frontend"]
+title: "Dark mode on Next.js"
+date: "2023-06-19"
+tags: ["next.js", "frontend", "theming"]
 ---
 
 <CustomImage
-  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/cozy-oni-cozyoninight.jpeg"
-  alt="lofi coding"
+  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/on-off.gif"
+  alt="on and off light switch"
   priority={true}
 />
 
-Next.js has two forms of pre-rendering: **Static Generation** and **Server-side Rendering**. The difference is in **when** it generates the HTML for a page.
+<small>
+  **First off thank you to whoever is reading my first blog post! I wanted to
+  write about something really cool I worked on recently and how much time it
+  saved me! **
+</small>
 
-- **Static Generation** is the pre-rendering method that generates the HTML at **build time**. The pre-rendered HTML is then _reused_ on each request.
-- **Server-side Rendering** is the pre-rendering method that generates the HTML on **each request**.
+## Getting Started
 
-Importantly, Next.js lets you **choose** which pre-rendering form to use for each page. You can create a "hybrid" Next.js app by using Static Generation for most pages and using Server-side Rendering for others.
+Assuming that you already have a Next.js and Tailwind project set up, this should be pretty easy. If you don't, here are the commands you need to get started.
 
-```ts
-const greeting = hello world
+**NOTE: Tailwind is not required for this tutorial, but I will be using it. You can find the full docs for Next.js theming options, including styled-components or vanilla CSS, in the [next-themes documentation](https://github.com/pacocoursey/next-themes).**
 
-if(greeting === 'hello world'){
-    return <div>This is just a test</div>
-}
+To create a new Next.js project, run the following command:
 
+```bash
+npx create-next-app@latest
 ```
 
-Next.js has two forms of pre-rendering: **Static Generation** and **Server-side Rendering**. The difference is in **when** it generates the HTML for a page.
+Follow the instructions on the command line to set up your project. During the setup process, you should have an option to include Tailwind CSS.
 
-- **Static Generation** is the pre-rendering method that generates the HTML at **build time**. The pre-rendered HTML is then _reused_ on each request.
-- **Server-side Rendering** is the pre-rendering method that generates the HTML on **each request**.
+If you already have a Next.js application without Tailwind CSS, run the following commands:
 
-Importantly, Next.js lets you **choose** which pre-rendering form to use for each page. You can create a "hybrid" Next.js app by using Static Generation for most pages and using Server-side Rendering for others.
+```bash
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+```
 
-Next.js has two forms of pre-rendering: **Static Generation** and **Server-side Rendering**. The difference is in **when** it generates the HTML for a page.
+In your `tailwind.config.ts` file, paste the following code. If you don't have a tailwind config file, you can create one. However, Tailwind CSS should automatically generate a config file for you, so make sure your packages are installed correctly.
 
-- **Static Generation** is the pre-rendering method that generates the HTML at **build time**. The pre-rendered HTML is then _reused_ on each request.
-- **Server-side Rendering** is the pre-rendering method that generates the HTML on **each request**.
+```ts
+// tailwind.config.js
+module.exports = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    // Or if using the `src` directory:
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+```
 
-Importantly, Next.js lets you **choose** which pre-rendering form to use for each page. You can create a "hybrid" Next.js app by using Static Generation for most pages and using Server-side Rendering for others.
+These steps are taken directly from the [tailwind docs](https://tailwindcss.com/docs/guides/nextjs) if you want to check them out or something changed since posting this.
 
-Next.js has two forms of pre-rendering: **Static Generation** and **Server-side Rendering**. The difference is in **when** it generates the HTML for a page.
+For the final step before using tailwind, we need to add these directives to our `globals.css` or the highest level CSS file you have.
 
-- **Static Generation** is the pre-rendering method that generates the HTML at **build time**. The pre-rendered HTML is then _reused_ on each request.
-- **Server-side Rendering** is the pre-rendering method that generates the HTML on **each request**.
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
 
-Importantly, Next.js lets you **choose** which pre-rendering form to use for each page. You can create a "hybrid" Next.js app by using Static Generation for most pages and using Server-side Rendering for others.
+Here's what each directive does:
+
+1. **@tailwind base:** This directive includes the base styles provided by Tailwind CSS. It resets and normalizes default styles across different browsers, ensuring a consistent starting point for your styles.
+
+2. **@tailwind components:** This directive includes pre-defined styles for various UI components provided by Tailwind CSS. It gives you access to a library of ready-to-use components like buttons, forms, navigation bars, and more. These styles can be customized to match your design requirements.
+
+3. **@tailwind utilities:** This directive includes a comprehensive set of utility classes offered by Tailwind CSS. Utility classes are small, single-purpose classes that can be used to apply specific styles or behavior to your HTML elements. By including this directive, you gain access to a wide range of utility classes that make it easy to build complex layouts and apply styles efficiently.
+
+<strong>🎉 Congrats!! you have set up next.js and tailwind!! 🎉</strong>
+
+## Setting Up dark mode or other themes!
+
+In previous projects, I have built custom dark mode toggles. However, there's a great package that handles much of the heavy work for us: **Next-themes**.
+
+Next-themes offers several out-of-the-box features, including:
+
+- Syncing themes between tabs
+- System setting integration with prefers-color-scheme
+- The `useTheme` hook
+
+You can read the full docs here - [Next-themes](https://github.com/pacocoursey/next-themes)
+
+If you're already sold on using next-themes let's get started!
+
+```bash
+$ npm install next-themes
+# or
+$ yarn add next-themes
+```
+
+There are **two** ways to set up next-themes and it depends on how youre using next. Check your code editor and check at the root level if you're using `app/` or `pages/`
+
+#### /pages
+
+```ts
+import { ThemeProvider } from "next-themes";
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <ThemeProvider>
+      <Component {...pageProps} />
+    </ThemeProvider>
+  );
+}
+
+export default MyApp;
+```
+
+#### /app
+
+This way requires a bit more set up but still way simpler than creating all this logic out.
+
+In your root `/app` level create a `providers.tsx` and paste the following
+
+```ts
+"use client";
+
+import { ThemeProvider } from "next-themes";
+type Props = {
+  // Use React.ReactNode for the type!
+  children: any;
+};
+
+export function Providers({ children }: Props) {
+  return <ThemeProvider attribute="class">{children}</ThemeProvider>;
+}
+```
+
+**Why do we need this?** Since we are using client side code above mixing this at the top level of our code would not allow us to use Next.js features.
+
+Once This wrapper has been created we can insert it directly on our `layout.tsx` page.
+
+```ts
+import "./globals.css";
+import { Providers } from "./providers";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+Once you have completed the setup, the next step is to integrate the useTheme hook. When using this hook, it's important to consider where to place it to take advantage of static site generation (SSG), server-side rendering (SSR), and incremental static generation (ISG), while still utilizing client-side code.
+
+In my case, I chose to create a toggle button as an example, as it is a component that doesn't require rendering data. You can use the following code as a reference:
+
+```ts
+"use client";
+import React from "react";
+import { useTheme } from "next-themes";
+
+export default function ToggleButton() {
+  const [mounted, setMounted] = React.useState(false);
+  const { theme, setTheme } = useTheme();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return (
+    <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      {theme === "dark" ? Dark : Light}
+    </button>
+  );
+}
+```
+
+lets break down why we need the `useEffect`, due to the inability to determine the theme on the server, several values returned from useTheme will be undefined until the client is mounted. Consequently, attempting to render UI components based on the current theme before client mounting will result in a hydration mismatch error.
+
+<strong>Congrats again you have set up dark mode on your application!!!</strong>
+
+#### How do we use it?
+
+Once the toggle is set up when writing tailwind values all we need to add is
+
+```ts
+      <p className=" text-slate-700 dark:text-slate-300">
+	  // We just need to handle dark: case like so
+```
+
+#### Don't like the default color?
+
+```css
+@layer base {
+  body {
+    @apply dark:bg-[#202834];
+  }
+}
+```
+
+You can directly change it on you `globals.css` file to whatever color scheme you'd like.
+
+**And that is all folks! ** Once again thank you for reading. If something seems off and you'd like help or something is wrong you can reachout to me [here](https://www.linkedin.com/in/anthony-mendoza9/).
