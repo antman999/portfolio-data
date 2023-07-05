@@ -1,0 +1,216 @@
+---
+title: "React Perf Episode I: The useMemo Unleashed"
+date: "2023-06-19"
+tags: ["React", "frontend", "react-perf-saga"]
+---
+
+<CustomImage
+  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/episode-1-opening.gif"
+  alt="Star wars episode 1 crawl scene"
+  priority={true}
+/>
+
+## Context
+
+Lately, I've been delving deeper into optimizing React's performance, and this blog marks the first part of a series where we'll explore techniques to enhance code performance and understand their practical applications. React, right out of the box, is exceptionally fast when compared to writing vanilla JS code. Just by taking a quick look, we can appreciate some of the optimizations React performs under the hood, making our lives easier. Here are a few noteworthy features:
+
+1.  Virtual DOM: React implements a virtual representation of the actual DOM, known as the Virtual DOM. It calculates the minimal number of updates required and efficiently applies them to the real DOM.
+2.  Diffing Algorithm: React's reconciliation algorithm compares the previous and current versions of the Virtual DOM to identify the minimal set of changes required.
+3.  Efficient Event Handling: React employs event delegation, where event handlers are attached to higher-level components rather than individual child components
+4.  Lightweight Footprint: React itself has a relatively small file size, making it quick to download and load in the browser.
+
+These are just a few examples of the numerous optimizations that React handles behind the scenes, which we sometimes tend to overlook. As a devoted React enthusiast 😂, I truly appreciate these built-in features.
+
+However, there are still many other straightforward techniques we can employ to further improve performance. The real challenge lies in understanding when to utilize them and the reasons behind their effectiveness.
+
+In this first installment of the series, we will explore the implementation of React's useMemo hook. Today, our goal is to build a search input that efficiently filters based on names. Our primary focus will be on optimizing the filter logic.
+
+## Initial setup
+
+First, we want to get a list of users and their names for that I'm going to be using this fake JSON endpoint - https://jsonplaceholder.typicode.com/users.
+
+in our code, we want to fetch all users when the component mounts and create a basic input above them.
+
+```js
+// app.js
+
+import "./App.css";
+import React from "react";
+
+function App() {
+  const [data, setData] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      const res = await fetch("https://jsonplaceholder.typicode.com/users");
+      if (!res.ok) console.log("failed to fetch users");
+      const json = await res.json();
+      setData(json);
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <div className="App">
+      <input placeholder="filter Users" />
+      <ul>
+        {data &&
+          data.map((user) => {
+            return <li key={user.id}>{user.name}</li>;
+          })}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
+```
+
+Here we are just doing a simple async fetch when the component mounts all users and setting it to the `data` state and mapping over the user's data and rendering the names.
+
+As far as styling goes, I kept it super simple to focus on the use of `useMemo`
+
+```css
+.App {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin: 24px;
+}
+ul {
+  list-style: none;
+}
+```
+
+<CustomImage
+  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/before-filter.png"
+  alt="Strange eye camera asking for password"
+  priority={true}
+/>
+
+## Controlling the Input
+
+In the next step, we aim to gain control over the input. Our objective is to capture the user's input and compare it against the state to set our filter logic.
+
+#### Controlled Input vs. Uncontrolled Input
+
+Before proceeding, let's clarify the difference between controlled and uncontrolled inputs:
+
+- **Controlled Input**: In a controlled input, the value is controlled by React state. We can capture the user's input and update the value accordingly. By doing so, we have full control over the input and can easily manipulate its behavior.
+
+- **Uncontrolled Input**: On the other hand, an uncontrolled input does not rely on React state. The value is managed by the DOM itself. Although it may seem convenient at times, it limits our ability to control and manipulate the input's behavior.
+
+**Note: We should use controlled inputs as much as possible, if we don't we risk losing the advantages of react (Idea for another blog post!)**
+
+```js
+/** ... previous code */
+
+const [query, setQuery] = React.useState("");
+
+const handleChange = (e) => {
+  const queryValue = e.target.value;
+  setQuery(queryValue);
+};
+/** Previous JSX */
+<input placeholder="filter Users" value={query} onChange={handleChange} />;
+```
+
+If we `console.log(query)` we can see we have a cycle of using the value to set the query value and it works perfectly!
+
+## Initial filter logic
+
+Now that we have a controlled input where we capture the users input and we have our users/data fetched let's work on implementing a basic filter logic!
+
+```js
+/** ...previous code */
+
+const filteredUsers = data?.filter((user) => {
+  return user.name.toLowerCase().includes(query.toLowerCase());
+});
+
+/** Previous JSX */
+<ul>
+  {filteredUsers &&
+    filteredUsers.map((user) => {
+      return <li key={user.id}>{user.name}</li>;
+    })}
+</ul>;
+```
+
+What are we accomplishing here? We are creating a new array, filteredUsers, using the filter() method on our data array. This ensures that we have a separate copy of the filtered user data without mutating the original state.
+
+In our JSX code, we can now directly use the filteredUsers array to map over and render the filtered user items, eliminating the need to use the data array. By doing so, we ensure that only the filtered users are displayed based on the user's input.
+
+## The Problem - The start of the saga!
+
+This code looks correct and works great, but imagine a huge list of names (in the thousands), and when the component re-renders we need to re-calculate the `filteredUsers` function on every single re-render! This could be a bottleneck for our code as our data/code grows. If only there was a way to check if any of the data had changed 🧐🧐
+
+## The Solution - Fighting the dark side!
+
+Thankfully there is a way when we use the force! - introducing `React.useMemo`!!!
+
+**So what is useMemo??**
+React.useMemo is a hook that allows us to optimize expensive calculations or complex operations within our React components. It memoizes the result of a function or computation, ensuring that the calculation is performed only when the dependencies change. By caching the result, React avoids unnecessary re-computation, leading to faster rendering and improved overall performance.
+
+In really simple terms `useMemo` acts as a guard before calculating our expensive computation!
+
+<CustomImage
+  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/guard-check.gif"
+  alt="code screenshot"
+  priority={true}
+/>
+
+Think of useMemo as the weird eye camera above and c3po(gold robot) as data/query.
+
+`useMemo` will ask 'Has anything changed?' - no
+You may not proceed to calculate again!
+
+**How?**
+It does so by the dependency array `useMemo` takes! in our case it will check has the `query` or `data` changed if not it will use the cached value! let's apply this to our code!
+
+```js
+const filteredUsers = React.useMemo(() => {
+  return data?.filter((users) => {
+    return users.name.toLowerCase().includes(query.toLowerCase());
+  });
+}, [query, data]);
+```
+
+We want to also return the useMemo so we can apply a return before filtering!
+
+And just like that folks we have improved our code!
+
+**Other use cases for `React.useMemo`**
+**Caching Component Props:**
+Another practical use of React.useMemo is caching component props. In cases where a component receives props that don't change frequently but are computationally expensive to process, we can utilize React.useMemo to cache the result based on those props. This ensures that the expensive computation is performed only when the relevant props change, enhancing the component's efficiency.
+
+**Preventing Unnecessary Re-renders:**
+React.useMemo can also be employed to prevent unnecessary re-renders of child components. By memoizing the value of a prop passed to a child component using React.useMemo, we ensure that the child component is re-rendered only when the memoized prop value changes. This can be particularly useful when dealing with large or deeply nested component trees, minimizing rendering overhead and enhancing overall performance.
+
+## Final notes, plz read before using it everywhere!
+
+One final note on using `useMemo`, just like everything in life we must use it in moderation. We should avoid using it for every single function or calculation. Caching takes up memory and if we use it everywhere we can risk slowing our app down by taking up all the memory!
+
+**Here are some potential downsides of `useMemo`!**
+
+**Increased Memory Usage:** Memoized values are stored in memory, which can lead to higher memory consumption, especially when dealing with large or numerous memoized values.
+
+**Overuse Complexity:** Overusing React.useMemo can introduce unnecessary complexity and reduce code readability. It should be applied selectively to computations that truly benefit from memoization.
+
+**Potential for Stale Data:** Incorrectly defining or overlooking dependencies can result in stale data. The memoized value may not update when needed, leading to incorrect or outdated results.
+
+**Performance Trade-off:** While memoization improves performance for expensive computations, it introduces an overhead cost. For simpler computations or fast operations, the overhead of memoization may outweigh the benefits.
+
+**Debugging Complexity:** Debugging can be more challenging when using memoized values, as tracing changes and identifying issues within memoized computations can be harder.
+
+Please consider all of these downsides before using our caching hook!
+
+Once again, Thank you for reading all of this and hopefully this helps you optimize your code! To cap this post up here is a gif of how excited we should be this work!
+
+<CustomImage
+  src="https://raw.githubusercontent.com/antman999/portfolio-data/main/images/episode-1-ending.gif"
+  alt="Strange eye camera asking for password"
+  priority={true}
+/>
