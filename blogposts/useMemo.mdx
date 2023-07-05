@@ -164,8 +164,8 @@ In really simple terms `useMemo` acts as a guard before calculating our expensiv
 
 Think of useMemo as the weird eye camera above and c3po(gold robot) as data/query.
 
-`useMemo` will ask 'Has anything changed?' - no
-You may not proceed to calculate again!
+`useMemo` will ask 'Has anything changed?' - no,
+'You may not proceed to calculate again!'
 
 **How?**
 It does so by the dependency array `useMemo` takes! in our case it will check has the `query` or `data` changed if not it will use the cached value! let's apply this to our code!
